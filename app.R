@@ -1,12 +1,8 @@
 # Load packages used by the app. Install missing packages, if needed.
 library(shiny)
 library(bslib)
-library(dplyr)
-library(ggplot2)
-library(readr)
-library(tidyr)
-library(stringr)
-library(purrr)
+library(thematic)
+library(tidyverse)
 library(gitlink)
 
 # Read data from a CSV file and perform data preprocessing
@@ -48,6 +44,8 @@ industries <- c("Academia",
 # Set the default theme for ggplot2 plots
 ggplot2::theme_set(ggplot2::theme_minimal())
 
+# Apply the CSS used by the Shiny app to the ggplot2 plots
+thematic_shiny()
 
 # Define the Shiny UI layout
 ui <- page_sidebar(
