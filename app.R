@@ -64,7 +64,7 @@ server <- function(input, output, session) {
   
   thematic_shiny()  # activate dark mode for ggplot
   
-  df_long <- read_excel("DATA/df_long4.xlsx")
+  df_long <- readxl::read_excel("data/df_long4.xlsx")
   
   # Format Value → Billion
   df_long <- df_long %>%
