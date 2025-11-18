@@ -1,7 +1,12 @@
 # Load packages used by the app. Install missing packages, if needed.
 library(shiny)
 library(bslib)
-library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(tidyr)
+library(stringr)
+library(purrr)
 library(gitlink)
 
 # Read data from a CSV file and perform data preprocessing
