@@ -1,184 +1,209 @@
-# Read data from a CSV file and perform data preprocessing
-expansions <- read_csv("data/expansions.csv") |>
-  mutate(evaluation = factor(evaluation, levels = c("None", "A", "B")),
-         propensity = factor(propensity, levels = c("Good", "Average", "Poor")))
+library(shiny)
+library(bslib)
+library(thematic)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(plotly)
+library(DT)
 
-# Compute expansion rates by trial and group
-expansion_groups <- expansions |>
-  group_by(industry, propensity, contract, evaluation) |>
-  summarize(success_rate = round(mean(outcome == "Won")* 100),
-            avg_amount = round(mean(amount)),
-            avg_days = round(mean(days)),
-            n = n()) |>
-  ungroup()
-
-# Compute expansion rates by trial
-overall_rates <- expansions |>
-  group_by(evaluation) |>
-  summarise(rate = round(mean(outcome == "Won"), 2))
-
-# Restructure expansion rates by trial as a vector
-rates <- structure(overall_rates$rate, names = overall_rates$evaluation)
-
-# Define lists for propensity, contract and industry choices
-propensities <- c("Good", "Average", "Poor")
-contracts <- c("Monthly", "Annual")
-industries <- c("Academia",
-                "Energy",
-                "Finance",
-                "Government",
-                "Healthcare",
-                "Insurance",
-                "Manufacturing",
-                "Non-Profit",
-                "Pharmaceuticals",
-                "Technology")
-
-# Set the default theme for ggplot2 plots
-ggplot2::theme_set(ggplot2::theme_minimal())
-
-# Apply the CSS used by the Shiny app to the ggplot2 plots
-thematic_shiny()
-
-# Define the Shiny UI layout
-ui <- page_sidebar(
+# ================= UI ================= #
+ui <- fluidPage(
   
-  # Set CSS theme
-  theme = bs_theme(bootswatch = "darkly",
-                   bg = "#222222",
-                   fg = "#86C7ED",
-                   success ="#86C7ED"),
+  # DARK THEME
+  theme = bs_theme(
+    version = 5,
+    bootswatch = "darkly",
+    primary = "#4DB8FF"
+  ),
   
-  # Add title
-  title = "Effectiveness of DemoCo App Free Trial by Customer Segment",
+  titlePanel("Dashboard SOB Performance"),
   
-  # Add sidebar elements
-  sidebar = sidebar(title = "Select a segment of data to view",
-                    class ="bg-secondary",
-                    selectInput("industry", "Select industries", choices = industries, selected = "", multiple  = TRUE),
-                    selectInput("propensity", "Select propensities to buy", choices = propensities, selected = "", multiple  = TRUE),
-                    selectInput("contract", "Select contract types", choices = contracts, selected = "", multiple  = TRUE),
-                    "This app compares the effectiveness of two types of free trials, A (30-days) and B (100-days), at converting users into customers.",
-                    tags$img(src = "logo.png", width = "100%", height = "auto")),
-  
-  # Layout non-sidebar elements
-  layout_columns(card(card_header("Conversions over time"),
-                      plotOutput("line")),
-                 card(card_header("Conversion rates"),
-                      plotOutput("bar")),
-                 value_box(title = "Recommended Trial",
-                           value = textOutput("recommended_eval"),
-                           theme_color = "secondary"),
-                 value_box(title = "Customers",
-                           value = textOutput("number_of_customers"),
-                           theme_color = "secondary"),
-                 value_box(title = "Avg Spend",
-                           value = textOutput("average_spend"),
-                           theme_color = "secondary"),
-                 card(card_header("Conversion rates by subgroup"),
-                      tableOutput("table")),
-                 col_widths = c(8, 4, 4, 4, 4, 12),
-                 row_heights = c(4, 1.5, 3))
+  sidebarLayout(
+    
+    # ------- SIDEBAR ------- #
+    sidebarPanel(
+      width = 3,
+      h3("Filter Data"),
+      
+      selectInput("yearInput", "Select Year:",
+                  choices = c("All", 2022:2025), selected = "All"),
+      
+      selectInput("sobInput", "Select SOB:", choices = "All"),
+      
+      selectInput("cobInput", "Select COB:", choices = "All"),
+      
+      selectInput("categoryInput", "Select Metric:",
+                  choices = c("NETPREMIUM", "NETPREMIUM_ABSOLUTE",
+                              "UW_SURPLUS", "UW_SURPLUS_ABSOLUTE"),
+                  selected = "NETPREMIUM")
+    ),
+    
+    # ------- MAIN PANEL ------- #
+    mainPanel(
+      width = 9,
+      
+      div(
+        style = "padding:15px; background:#1a1a1a; border-radius:10px; margin-bottom:20px;",
+        h4("Vertical Bar Chart by SOB"),
+        plotlyOutput("barPlot", height = "900px")
+      ),
+      
+      div(
+        style = "padding:15px; background:#1a1a1a; border-radius:10px;",
+        h4("Filtered Data Table"),
+        DTOutput("tableData")
+      )
+    )
+  )
 )
 
-# Define the Shiny server function
-server <- function(input, output) {
+# ================= SERVER ================= #
+server <- function(input, output, session) {
   
-  # Provide default values for industry, propensity, and contract selections
-  selected_industries <- reactive({
-    if (is.null(input$industry)) industries else input$industry
-  })
+  thematic_shiny()  # activate dark mode for ggplot
   
-  selected_propensities <- reactive({
-    if (is.null(input$propensity)) propensities else input$propensity
-  })
+  df_long <- read_excel("DATA/df_long4.xlsx")
   
-  selected_contracts <- reactive({
-    if (is.null(input$contract)) contracts else input$contract
-  })
+  # Format Value → Billion
+  df_long <- df_long %>%
+    mutate(Value = as.numeric(format(Value / 1e9,
+                                     scientific = FALSE,
+                                     nsmall = 9)))
   
-  # Filter data against selections
-  filtered_expansions <- reactive({
-    expansions |>
-      filter(industry %in% selected_industries(),
-             propensity %in% selected_propensities(),
-             contract %in% selected_contracts())
-  })
-  
-  # Compute conversions by month
-  conversions <- reactive({
-    filtered_expansions() |>
-      mutate(date = floor_date(date, unit = "month")) |>
-      group_by(date, evaluation) |>
-      summarize(n = sum(outcome == "Won")) |>
-      ungroup()
-  })
-  
-  # Retrieve conversion rates for selected groups
-  groups <- reactive({
-    expansion_groups |>
-      filter(industry %in% selected_industries(),
-             propensity %in% selected_propensities(),
-             contract %in% selected_contracts())
-  })
-  
-  # Render text for recommended trial
-  output$recommended_eval <- renderText({
-    recommendation <-
-      filtered_expansions() |>
-      group_by(evaluation) |>
-      summarise(rate = mean(outcome == "Won")) |>
-      filter(rate == max(rate)) |>
-      pull(evaluation)
+  # ========== DYNAMIC SOB FILTER ========== #
+  observe({
+    data_filtered <- df_long
+    if (input$yearInput != "All") {
+      data_filtered <- data_filtered %>% filter(YEAR == input$yearInput)
+    }
     
-    as.character(recommendation[1])
-  })
-  
-  # Render text for number of customers
-  output$number_of_customers <- renderText({
-    sum(filtered_expansions()$outcome == "Won") |>
-      format(big.mark = ",")
-  })
-  
-  # Render text for average spend
-  output$average_spend <- renderText({
-    x <-
-      filtered_expansions() |>
-      filter(outcome == "Won") |>
-      summarise(spend = round(mean(amount))) |>
-      pull(spend)
+    sob_choices <- c("All", sort(unique(data_filtered$GROUP_SOB)))
     
-    str_glue("${x}")
+    updateSelectInput(session, "sobInput",
+                      choices = sob_choices,
+                      selected = ifelse(input$sobInput %in% sob_choices, input$sobInput, "All"))
   })
   
-  # Render line plot for conversions over time
-  output$line <- renderPlot({
-    ggplot(conversions(), aes(x = date, y = n, color = evaluation)) +
-      geom_line() +
-      theme(axis.title = element_blank()) +
-      labs(color = "Trial Type")
+  # ========== DYNAMIC COB FILTER ========== #
+  observe({
+    data_filtered <- df_long
+    
+    if (input$yearInput != "All") {
+      data_filtered <- data_filtered %>% filter(YEAR == input$yearInput)
+    }
+    if (input$sobInput != "All") {
+      data_filtered <- data_filtered %>% filter(GROUP_SOB == input$sobInput)
+    }
+    
+    cob_choices <- c("All", sort(unique(data_filtered$COB)))
+    
+    updateSelectInput(session, "cobInput",
+                      choices = cob_choices,
+                      selected = ifelse(input$cobInput %in% cob_choices, input$cobInput, "All"))
   })
   
-  # Render bar plot for conversion rates by subgroup
-  output$bar <- renderPlot({
-    groups() |>
-      group_by(evaluation) |>
-      summarise(rate = round(sum(n * success_rate) / sum(n), 2)) |>
-      ggplot(aes(x = evaluation, y = rate, fill = evaluation)) +
-      geom_col() +
-      guides(fill = "none") +
-      theme(axis.title = element_blank()) +
-      scale_y_continuous(limits = c(0, 100))
+  # ========== FILTERED DATA LOGIC (FULL) ========== #
+  filtered_data <- reactive({
+    data <- df_long
+    
+    # Filter 1: Year
+    if (input$yearInput != "All") {
+      data <- data %>% filter(YEAR == input$yearInput)
+    }
+    
+    # Filter 2: SOB
+    if (input$sobInput != "All") {
+      data <- data %>% filter(GROUP_SOB == input$sobInput)
+    }
+    
+    # Filter 3: COB + Aggregation Logic
+    if (input$cobInput != "All") {
+      data <- data %>% filter(COB == input$cobInput)
+      
+    } else if (input$cobInput == "All" && input$sobInput != "All") {
+      
+      data <- data %>%
+        group_by(GROUP_SOB, YEAR, Metric) %>%
+        summarise(Value = sum(Value, na.rm = TRUE), .groups = "drop")
+      
+    } else if (input$cobInput == "All" && input$sobInput == "All") {
+      
+      data <- data %>%
+        group_by(GROUP_SOB, YEAR, Metric) %>%
+        summarise(Value = sum(Value, na.rm = TRUE), .groups = "drop")
+    }
+    
+    # ---- Sorting ----
+    selected_metric <- input$categoryInput
+    
+    base_order <- data %>%
+      filter(Metric == selected_metric) %>%
+      group_by(GROUP_SOB) %>%
+      summarise(order_value = sum(Value, na.rm = TRUE)) %>%
+      arrange(desc(order_value)) %>%
+      pull(GROUP_SOB)
+    
+    data$GROUP_SOB <- factor(data$GROUP_SOB, levels = base_order)
+    
+    # Facet ordering
+    data$Metric <- factor(
+      data$Metric,
+      levels = c("NETPREMIUM", "UW_SURPLUS",
+                 "NETPREMIUM_ABSOLUTE", "UW_SURPLUS_ABSOLUTE")
+    )
+    
+    # ---- Top 10 SOB (Only when Year = All) ----
+    if (input$yearInput == "All") {
+      top_sob <- data %>%
+        group_by(GROUP_SOB) %>%
+        summarise(total_value = sum(Value, na.rm = TRUE)) %>%
+        arrange(desc(total_value)) %>%
+        slice_head(n = 10) %>%
+        pull(GROUP_SOB)
+      
+      data <- data %>% filter(GROUP_SOB %in% top_sob)
+    }
+    
+    data
   })
   
-  # Render table for conversion rates by subgroup
-  output$table <- renderTable({
-    groups() |>
-      select(industry, propensity, contract, evaluation, success_rate) |>
-      pivot_wider(names_from = evaluation, values_from = success_rate)
-  },
-  digits = 0)
+  # ========== PLOT ========== #
+  output$barPlot <- renderPlotly({
+    p <- ggplot(filtered_data(),
+                aes(x = GROUP_SOB, y = Value, fill = as.factor(YEAR))) +
+      geom_col(position = "dodge") +
+      geom_hline(yintercept = 0, color = "white") +
+      facet_wrap(~ Metric, scales = "free_y", ncol = 2) +
+      scale_y_continuous(
+        labels = number_format(accuracy = 1, big.mark = ",")
+      ) +
+      scale_fill_manual(values = c(
+        "2022" = "#FF99CC",
+        "2023" = "#66CCFF",
+        "2024" = "#FFCC33",
+        "2025" = "#66CC66"
+      )) +
+      theme_minimal(base_size = 11) +
+      theme(
+        panel.background = element_rect(fill = NA),
+        plot.background = element_rect(fill = NA),
+        axis.text.x = element_text(angle = 60, hjust = 1, size = 9),
+        strip.text = element_text(face = "bold")
+      )
+    
+    ggplotly(p) %>% layout(plot_bgcolor = "#1a1a1a", paper_bgcolor = "#1a1a1a")
+  })
+  
+  # ========== TABLE ========== #
+  output$tableData <- renderDT({
+    datatable(
+      filtered_data(),
+      options = list(scrollX = TRUE, pageLength = 15),
+      rownames = FALSE
+    )
+  })
 }
 
-# Create the Shiny app
-shinyApp(ui = ui, server = server)
+shinyApp(ui, server)
