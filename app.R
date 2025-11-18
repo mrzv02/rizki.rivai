@@ -1,7 +1,6 @@
 # Load packages used by the app. Install missing packages, if needed.
 library(shiny)
 library(bslib)
-library(thematic)
 library(tidyverse)
 library(gitlink)
 
