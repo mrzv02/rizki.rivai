@@ -1,8 +1,3 @@
-# Load packages used by the app. Install missing packages, if needed.
-library(shiny)
-library(bslib)
-library(gitlink)
-
 # Read data from a CSV file and perform data preprocessing
 expansions <- read_csv("data/expansions.csv") |>
   mutate(evaluation = factor(evaluation, levels = c("None", "A", "B")),
