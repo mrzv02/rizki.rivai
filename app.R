@@ -1,7 +1,6 @@
 # Load packages used by the app. Install missing packages, if needed.
 library(shiny)
 library(bslib)
-library(tidyverse)
 library(gitlink)
 
 # Read data from a CSV file and perform data preprocessing
