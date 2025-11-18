@@ -11,8 +11,8 @@ id = '019a97c9-3269-cf02-2cee-d60dd3f22a9e'
 dashboard_url = 'https://connect.posit.cloud/rizki-rivai-fpginsid/content/019a97c9-3269-cf02-2cee-d60dd3f22a9e'
 direct_url = 'https://019a97c9-3269-cf02-2cee-d60dd3f22a9e.share.connect.posit.cloud'
 logs_url = 'https://connect.posit.cloud/rizki-rivai-fpginsid/content/019a97c9-3269-cf02-2cee-d60dd3f22a9e/history'
-deployed_at = '2025-11-18T23:43:18+07:00'
-bundle_id = '019a97d9-28b2-f2ff-290f-09c158fdcd0a'
+deployed_at = '2025-11-18T23:48:20+07:00'
+bundle_id = '019a97dd-c57d-38df-69aa-5e041bd72239'
 files = [
   '.posit/publish/COBACOBA-QPQ0.toml',
   '.posit/publish/deployments/deployment-POU8.toml',
