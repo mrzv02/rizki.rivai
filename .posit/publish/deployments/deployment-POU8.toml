@@ -11,8 +11,8 @@ id = '019a97c9-3269-cf02-2cee-d60dd3f22a9e'
 dashboard_url = 'https://connect.posit.cloud/rizki-rivai-fpginsid/content/019a97c9-3269-cf02-2cee-d60dd3f22a9e'
 direct_url = 'https://019a97c9-3269-cf02-2cee-d60dd3f22a9e.share.connect.posit.cloud'
 logs_url = 'https://connect.posit.cloud/rizki-rivai-fpginsid/content/019a97c9-3269-cf02-2cee-d60dd3f22a9e/history'
-deployed_at = '2025-11-18T23:33:46+07:00'
-bundle_id = '019a97cf-84d9-3318-b057-e86b30d5b589'
+deployed_at = '2025-11-18T23:43:18+07:00'
+bundle_id = '019a97d9-28b2-f2ff-290f-09c158fdcd0a'
 files = [
   '.posit/publish/COBACOBA-QPQ0.toml',
   '.posit/publish/deployments/deployment-POU8.toml',
@@ -22,11 +22,6 @@ files = [
 
 [connect_cloud]
 account_name = 'rizki-rivai-fpginsid'
-
-[deployment_error]
-code = 'unknown'
-message = 'Missing bundle: The source code for your content is missing. Please be sure to upload the source code for each revision.'
-operation = 'publish/deployContent'
 
 [configuration]
 product_type = 'connect_cloud'
